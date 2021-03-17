@@ -18,7 +18,20 @@ import (
 
 var (
 	formatFlag = flag.String("format", "kml", "format")
-	raceFlag   = flag.String("race", "eigertour-2019-challenge", "race")
+	raceFlag   = flag.String("race", "red-bull-x-alps-2021", "race")
+)
+
+var (
+	blockBearings = map[string]int{
+		"S":  0,
+		"SW": 45,
+		"W":  90,
+		"NW": 135,
+		"N":  180,
+		"NE": 225,
+		"E":  270,
+		"SE": 315,
+	}
 )
 
 type turnpoint struct {
@@ -50,6 +63,122 @@ var (
 )
 
 var races = map[string]race{
+	"red-bull-x-alps-2021": {
+		name:    "Red Bull X-Alps 2021",
+		snippet: "Created by twpayne@gmail.com",
+		turnpoints: []turnpoint{
+			{
+				name:   "Mozartplatz",
+				lat:    47.798873,
+				lon:    13.047720,
+				paddle: "go",
+			},
+			{
+				name:      "Gaisberg",
+				lat:       47.804398,
+				lon:       13.110690,
+				paddle:    "1",
+				signboard: true,
+			},
+			{
+				name:      "Kleinarl Fußballplatz",
+				lat:       47.274628,
+				lon:       13.318581,
+				paddle:    "2",
+				signboard: true,
+			},
+			{
+				name:      "Kitzbühl Streif Mausefalle",
+				lat:       47.426461,
+				lon:       12.371147,
+				paddle:    "3",
+				signboard: true,
+			},
+			{
+				name:   "Chiemsee",
+				lat:    47.858077,
+				lon:    12.500269,
+				radius: 6000,
+				paddle: "4",
+			},
+			{
+				name:      "Marquartstein",
+				lat:       47.767503,
+				lon:       12.457437,
+				paddle:    "red-circle",
+				signboard: true,
+			},
+			{
+				name:     "Zugspitze",
+				lat:      47.421063,
+				lon:      10.985517,
+				offRoute: true,
+				pass:     "N",
+			},
+			{
+				name:      "Lermoos",
+				lat:       47.401283,
+				lon:       10.879767,
+				paddle:    "5",
+				signboard: true,
+			},
+			{
+				name:   "Säntis",
+				lat:    47.249365,
+				lon:    9.343238,
+				paddle: "6",
+				radius: 6000,
+			},
+			{
+				name:      "Fiesch",
+				lat:       46.40940,
+				lon:       8.13688,
+				paddle:    "7",
+				signboard: true,
+			},
+			{
+				name:   "Dent d’Oche",
+				lat:    46.352357,
+				lon:    6.731626,
+				paddle: "8",
+				pass:   "NW",
+			},
+			{
+				name:   "Mont Blanc",
+				lat:    45.830359,
+				lon:    6.867674,
+				paddle: "9",
+				pass:   "SW",
+			},
+			{
+				name:   "Piz Palü",
+				lat:    46.378200,
+				lon:    9.958730,
+				paddle: "A",
+				radius: 6000,
+			},
+			{
+				name:      "Kronplatz",
+				lat:       46.737598,
+				lon:       11.954900,
+				paddle:    "B",
+				signboard: true,
+			},
+			{
+				name:      "Schmittenhöhe",
+				lat:       47.328744,
+				lon:       12.737518,
+				paddle:    "C",
+				signboard: true,
+			},
+			{
+				name:   "Zell am See",
+				lat:    47.325290,
+				lon:    12.801694,
+				paddle: "stop",
+			},
+		},
+	},
 	"eigertour-2019-challenge": {
 		name:    "Eigertour 2019 Challenge",
 		snippet: "https://eigertour.rocks/ Created by twpayne@gmail.com",
@@ -393,29 +522,18 @@ func (tp turnpoint) kmlFolder() kml.Element {
 		radiusPlacemark = kml.Placemark(
 			kml.LineString(
 				kml.Coordinates(sphere.FAI.Circle(center, float64(tp.radius), 1)...),
+				kml.Tessellate(true),
 			),
 			kml.Style(
 				kml.LineStyle(
 					kml.Color(color.RGBA{R: 0, G: 192, B: 0, A: 192}),
-					kml.Tessellate(true),
 					kml.Width(3),
 				),
 			),
 		)
 	}
-	blockBearing := -1
-	switch tp.pass {
-	case "N":
-		blockBearing = 180
-	case "S":
-		blockBearing = 0
-	case "E":
-		blockBearing = 270
-	case "W":
-		blockBearing = 90
-	}
 	var blockPlacemark kml.Element
-	if blockBearing != -1 {
+	if blockBearing, ok := blockBearings[tp.pass]; ok {
 		blockPlacemark = kml.Folder(
 			kml.Placemark(
 				kml.LineString(
@@ -423,11 +541,11 @@ func (tp turnpoint) kmlFolder() kml.Element {
 						center,
 						sphere.FAI.Offset(center, 25000, float64(blockBearing)),
 					),
+					kml.Tessellate(true),
 				),
 				kml.Style(
 					kml.LineStyle(
 						kml.Color(color.RGBA{R: 192, G: 0, B: 0, A: 192}),
-						kml.Tessellate(true),
 						kml.Width(3),
 					),
 				),
@@ -513,6 +631,7 @@ func (r race) kmlTurnpointsFolder() kml.Element {
 	}
 	return kml.Folder(append([]kml.Element{
 		kml.Name("Turnpoints"),
+		kml.Open(true),
 	}, turnpointFolders...)...,
 	)
 }
