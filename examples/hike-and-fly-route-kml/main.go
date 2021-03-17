@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"image/color"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/twpayne/go-gpx"
 	kml "github.com/twpayne/go-kml"
 	"github.com/twpayne/go-kml/icon"
 	"github.com/twpayne/go-kml/sphere"
@@ -38,6 +40,7 @@ type turnpoint struct {
 	name      string
 	lat       float64
 	lon       float64
+	ele       float64
 	radius    int
 	paddle    string
 	signboard bool
@@ -71,12 +74,14 @@ var races = map[string]race{
 				name:   "Mozartplatz",
 				lat:    47.798873,
 				lon:    13.047720,
+				ele:    432,
 				paddle: "go",
 			},
 			{
 				name:      "Gaisberg",
 				lat:       47.804398,
 				lon:       13.110690,
+				ele:       1275,
 				paddle:    "1",
 				signboard: true,
 			},
@@ -84,6 +89,7 @@ var races = map[string]race{
 				name:      "Kleinarl Fußballplatz",
 				lat:       47.274628,
 				lon:       13.318581,
+				ele:       1009,
 				paddle:    "2",
 				signboard: true,
 			},
@@ -91,6 +97,7 @@ var races = map[string]race{
 				name:      "Kitzbühl Streif Mausefalle",
 				lat:       47.426461,
 				lon:       12.371147,
+				ele:       1633,
 				paddle:    "3",
 				signboard: true,
 			},
@@ -98,6 +105,7 @@ var races = map[string]race{
 				name:   "Chiemsee",
 				lat:    47.858077,
 				lon:    12.500269,
+				ele:    521,
 				radius: 6000,
 				paddle: "4",
 			},
@@ -105,6 +113,7 @@ var races = map[string]race{
 				name:      "Marquartstein",
 				lat:       47.767503,
 				lon:       12.457437,
+				ele:       542,
 				paddle:    "red-circle",
 				signboard: true,
 			},
@@ -112,6 +121,7 @@ var races = map[string]race{
 				name:     "Zugspitze",
 				lat:      47.421063,
 				lon:      10.985517,
+				ele:      2873,
 				offRoute: true,
 				pass:     "N",
 			},
@@ -119,6 +129,7 @@ var races = map[string]race{
 				name:      "Lermoos",
 				lat:       47.401283,
 				lon:       10.879767,
+				ele:       990,
 				paddle:    "5",
 				signboard: true,
 			},
@@ -126,6 +137,7 @@ var races = map[string]race{
 				name:   "Säntis",
 				lat:    47.249365,
 				lon:    9.343238,
+				ele:    2500,
 				paddle: "6",
 				radius: 6000,
 			},
@@ -133,6 +145,7 @@ var races = map[string]race{
 				name:      "Fiesch",
 				lat:       46.40940,
 				lon:       8.13688,
+				ele:       1057,
 				paddle:    "7",
 				signboard: true,
 			},
@@ -140,6 +153,7 @@ var races = map[string]race{
 				name:   "Dent d’Oche",
 				lat:    46.352357,
 				lon:    6.731626,
+				ele:    2079,
 				paddle: "8",
 				pass:   "NW",
 			},
@@ -147,6 +161,7 @@ var races = map[string]race{
 				name:   "Mont Blanc",
 				lat:    45.830359,
 				lon:    6.867674,
+				ele:    4714,
 				paddle: "9",
 				pass:   "SW",
 			},
@@ -154,6 +169,7 @@ var races = map[string]race{
 				name:   "Piz Palü",
 				lat:    46.378200,
 				lon:    9.958730,
+				ele:    3901,
 				paddle: "A",
 				radius: 6000,
 			},
@@ -161,6 +177,7 @@ var races = map[string]race{
 				name:      "Kronplatz",
 				lat:       46.737598,
 				lon:       11.954900,
+				ele:       2258,
 				paddle:    "B",
 				signboard: true,
 			},
@@ -168,6 +185,7 @@ var races = map[string]race{
 				name:      "Schmittenhöhe",
 				lat:       47.328744,
 				lon:       12.737518,
+				ele:       1950,
 				paddle:    "C",
 				signboard: true,
 			},
@@ -175,6 +193,7 @@ var races = map[string]race{
 				name:   "Zell am See",
 				lat:    47.325290,
 				lon:    12.801694,
+				ele:    751,
 				paddle: "stop",
 			},
 		},
@@ -515,6 +534,21 @@ var races = map[string]race{
 	},
 }
 
+func (tp turnpoint) desc() string {
+	switch {
+	case tp.signboard:
+		return "signboard"
+	case tp.notes != "":
+		return tp.notes
+	case tp.pass != "":
+		return fmt.Sprintf("pass %s", tp.pass)
+	case tp.radius != 0:
+		return fmt.Sprintf("%dm radius", tp.radius)
+	default:
+		return ""
+	}
+}
+
 func (tp turnpoint) kmlFolder() kml.Element {
 	center := kml.Coordinate{Lon: tp.lon, Lat: tp.lat}
 	var radiusPlacemark kml.Element
@@ -553,15 +587,8 @@ func (tp turnpoint) kmlFolder() kml.Element {
 		)
 	}
 	var snippet kml.Element
-	switch {
-	case tp.signboard:
-		snippet = kml.Snippet("signboard")
-	case tp.notes != "":
-		snippet = kml.Snippet(tp.notes)
-	case tp.pass != "":
-		snippet = kml.Snippet(fmt.Sprintf("pass %s", tp.pass))
-	case tp.radius != 0:
-		snippet = kml.Snippet(fmt.Sprintf("%dm radius", tp.radius))
+	if desc := tp.desc(); desc != "" {
+		snippet = kml.Snippet(desc)
 	}
 	var iconStyle kml.Element
 	switch {
@@ -593,6 +620,34 @@ func (tp turnpoint) kmlFolder() kml.Element {
 			),
 		),
 	)
+}
+
+func (r race) gpx() *gpx.GPX {
+	var wpts []*gpx.WptType
+	rte := &gpx.RteType{
+		Name: "Red Bull X-Alps 2021",
+		Desc: "Created by twpayne@gmail.com",
+	}
+	for _, tp := range r.turnpoints {
+		if tp.offRoute {
+			continue
+		}
+		wpt := &gpx.WptType{
+			Lat:  tp.lat,
+			Lon:  tp.lon,
+			Ele:  tp.ele,
+			Name: tp.name,
+			Desc: tp.desc(),
+		}
+		wpts = append(wpts, wpt)
+		rte.RtePt = append(rte.RtePt, wpt)
+	}
+	return &gpx.GPX{
+		Version: "1.0",
+		Creator: "ExpertGPS 1.1 - http://www.topografix.com",
+		Wpt:     wpts,
+		Rte:     []*gpx.RteType{rte},
+	}
 }
 
 func (r race) kmlRouteFolder() kml.Element {
@@ -676,6 +731,9 @@ func run() error {
 		return fmt.Errorf("unknown race: %q", *raceFlag)
 	}
 	switch *formatFlag {
+	case "gpx":
+		os.Stdout.WriteString(xml.Header)
+		return r.gpx().WriteIndent(os.Stdout, "", "  ")
 	case "kml":
 		return r.kmlDocument().WriteIndent(os.Stdout, "", "  ")
 	case "xcplanner":
