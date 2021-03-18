@@ -106,7 +106,7 @@ var races = map[string]race{
 				lat:    47.858077,
 				lon:    12.500269,
 				ele:    521,
-				radius: 6000,
+				radius: 3000,
 				paddle: "4",
 			},
 			{
@@ -139,7 +139,7 @@ var races = map[string]race{
 				lon:    9.343238,
 				ele:    2500,
 				paddle: "6",
-				radius: 6000,
+				radius: 1500,
 			},
 			{
 				name:      "Fiesch",
@@ -171,7 +171,7 @@ var races = map[string]race{
 				lon:    9.958730,
 				ele:    3901,
 				paddle: "A",
-				radius: 6000,
+				radius: 3000,
 			},
 			{
 				name:      "Kronplatz",
