@@ -12,8 +12,6 @@ jobs:
     steps:
     - name: Set up Go
       uses: actions/setup-go@v1
-      with:
-        go-version: 1.14.x
     - name: Cache Go modules
       uses: actions/cache@v2
       with:
@@ -30,4 +28,4 @@ jobs:
     - name: Lint
       uses: golangci/golangci-lint-action@v2
       with:
-        version: v1.35.2
+        version: v1.42.1
